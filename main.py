@@ -78,23 +78,84 @@ def update_fps():
     return fps_text
 
 
+class Border(pygame.sprite.Sprite):
+    def __init__(self, x1, y1, x2, y2):
+        super().__init__(all_sprites)
+        self.add(borders)
+        self.image = pygame.Surface([abs(x2 - x1), abs(y2 - y1)])
+        self.image.fill('#333333')
+        self.rect = pygame.Rect(x1, y1, x2 - x1, y2 - y1)
+
+    def update(self, *args):
+        if pygame.sprite.collide_mask(self, spaceship):
+            spaceship.v = [0, 0]
+            spaceship.a = 0
+            spaceship.d = 0
+
+            spaceship.aw = 0
+            spaceship.w = 0
+
+            spaceship.go = False
+
+
 class Spaceship(pygame.sprite.Sprite):
-    def __init__(self, *group):
-        super().__init__(*group)
+    def __init__(self):
+        super().__init__(all_sprites)
         scale_image("spaceship.png", size=width / 10 / 1000)
         self.sprite_img = load_image(os.path.join("temp", "spaceship.png"))
         self.image = self.sprite_img
         self.rect = self.image.get_rect()
         self.rect.x = width // 2 - self.rect.width // 2
         self.rect.y = height // 2 - self.rect.height // 2
+
         self.width = self.rect.width
+        self.go = True
+
+        self.v = [0, 0]
+        self.a = 0
+        self.x = self.rect.x
+        self.y = self.rect.y
+        self.d = 0
+
+        self.aw = 0
+        self.w = 0
+        self.angle = 0
 
     def update(self, *args):
-        self.image = pygame.transform.rotate(self.sprite_img, args[2])
+        tick = clock.tick()
+
+        self.w += self.aw * tick / 1000
+        self.angle += self.w * tick / 1000
+        angle_rad = self.angle / 360 * 2 * pi
+
+        self.v = [self.v[0] - self.a * tick / 1000 * math.sin(angle_rad),
+                  self.v[1] - self.a * tick / 1000 * math.cos(angle_rad)]
+        self.x += self.v[0]
+        self.y += self.v[1]
+
+        self.image = pygame.transform.rotate(self.sprite_img, self.angle)
         self.rect = self.image.get_rect()
-        d = (self.rect.width - self.width) // 2
-        self.rect.x = args[0] - d
-        self.rect.y = args[1] - d
+        self.d = (self.rect.width - self.width) // 2
+        self.rect.x = int(self.x) - self.d
+        self.rect.y = int(self.y) - self.d
+
+    def changes(self, type):
+        if type == pygame.KEYDOWN and self.go:
+            if event.key in [pygame.K_LEFT, pygame.K_a]:
+                self.aw = height / fps * 2 / (2 * pi) * 360
+            elif event.key in [pygame.K_RIGHT, pygame.K_d]:
+                self.aw = -height / fps * 2 / (2 * pi) * 360
+            elif event.key in [pygame.K_DOWN, pygame.K_s]:
+                self.a = -height / fps
+            elif event.key in [pygame.K_UP, pygame.K_w]:
+                self.a = height / fps
+        if type == pygame.KEYUP and self.go:
+            if event.key in [pygame.K_LEFT, pygame.K_RIGHT,
+                             pygame.K_a, pygame.K_d]:
+                self.aw = 0
+            elif event.key in [pygame.K_DOWN, pygame.K_UP,
+                               pygame.K_s, pygame.K_w]:
+                self.a = 0
 
 
 if __name__ == "__main__":
@@ -110,70 +171,35 @@ if __name__ == "__main__":
     ''
 
     all_sprites = pygame.sprite.Group()
-    spaceship = Spaceship(all_sprites)
-    v = [0, 0]
-    a = 0
-    x = spaceship.rect.x
-    y = spaceship.rect.y
 
-    aw = 0
-    w = 0
-    angle = 0
-    k = 1
+    borders = pygame.sprite.Group()
+    Border(0, 0, int(width / 16 * 3.5), height)
+    Border(width - int(width / 16 * 3.5), 0, width, height)
+    Border(0, -height, width, 0)
+    Border(0, height, width, 2 * height)
+
+    spaceship = Spaceship()
 
     ''
 
     running = True
     clock = pygame.time.Clock()
-    fps = 144
+    fps = 60
     while running:
 
         screen.fill('#111122')
-        screen.blit(update_fps(), (width - 40, 10))
 
         events = pygame.event.get()
         for event in events:
             if event.type == pygame.QUIT:
                 running = False
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    aw = height / fps * 15 / (2 * pi) * 360
-                elif event.key == pygame.K_RIGHT:
-                    aw = -height / fps * 15 / (2 * pi) * 360
-                elif event.key == pygame.K_DOWN:
-                    a = -height / fps
-                elif event.key == pygame.K_UP:
-                    a = height / fps
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
-                    aw = 0
-                elif event.key == pygame.K_DOWN or event.key == pygame.K_UP:
-                    a = 0
-
-        ''
+            spaceship.changes(event.type)
 
         all_sprites.draw(screen)
-
-        tick = clock.tick()
-
-        w += aw * tick / 1000
-        angle += w * tick / 1000
-        angle_rad = angle / 360 * 2 * pi
-
-        v = [v[0] - a * tick / 1000 * math.sin(angle_rad),
-             v[1] - a * tick / 1000 * math.cos(angle_rad)]
-        x += v[0]
-        y += v[1]
-
-        all_sprites.update(int(x), int(y), angle)
-
-        ''
+        all_sprites.update()
+        screen.blit(update_fps(), (width - 40, 10))
 
         pygame.display.flip()
-
-        ''
-
-        ''
 
         clock.tick(fps)
     pygame.quit()
