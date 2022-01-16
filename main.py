@@ -10,6 +10,9 @@ from PIL import Image
 import random
 import math
 
+import start_screen
+
+
 '''
 CONSTANTS
 '''
@@ -142,13 +145,13 @@ class Spaceship(pygame.sprite.Sprite):
     def changes(self, type):
         if type == pygame.KEYDOWN and self.go:
             if event.key in [pygame.K_LEFT, pygame.K_a]:
-                self.aw = height / fps * 2 / (2 * pi) * 360
+                self.aw = height / fps * 0.5 / (2 * pi) * 360
             elif event.key in [pygame.K_RIGHT, pygame.K_d]:
-                self.aw = -height / fps * 2 / (2 * pi) * 360
+                self.aw = -height / fps * 0.5 / (2 * pi) * 360
             elif event.key in [pygame.K_DOWN, pygame.K_s]:
-                self.a = -height / fps
+                self.a = -height / fps / 8
             elif event.key in [pygame.K_UP, pygame.K_w]:
-                self.a = height / fps
+                self.a = height / fps / 8
         if type == pygame.KEYUP and self.go:
             if event.key in [pygame.K_LEFT, pygame.K_RIGHT,
                              pygame.K_a, pygame.K_d]:
@@ -163,7 +166,8 @@ if __name__ == "__main__":
     pygame.display.set_caption('not enough SPACE')
     size = pygame.display.get_desktop_sizes()[0]
     # size = width, height = size[0] // 2, size[1] // 2
-    size = width, height = 1280, 720
+    with open("preferences.txt") as prefs:
+        size = width, height = [int(num) for num in prefs.readline().split(", ")]
     flags = DOUBLEBUF
     screen = pygame.display.set_mode(size, flags)
     screen.set_alpha(None)
@@ -185,6 +189,12 @@ if __name__ == "__main__":
     running = True
     clock = pygame.time.Clock()
     fps = 60
+
+    start_screen.width = width
+    start_screen.height = height
+    start_screen.rsz = width / 1080
+    where_to_go = start_screen.start_screen()
+
     while running:
 
         screen.fill('#111122')

@@ -4,11 +4,12 @@ import os
 
 
 pygame.init()
-size = width, height = 1280, 720
+with open("preferences.txt") as prefs:
+    size = width, height = [int(num) for num in prefs.readline().split(", ")]
 rsz = width / 1080
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
-FPS = 50
+FPS = 60
 
 
 def load_image(name, colorkey=None):
@@ -45,7 +46,7 @@ class Button:
 
     def update(self, pos, clicked):
         self.is_focused = self.rect.x <= pos[0] <= self.rect.x + self.rect.w and \
-            self.rect.y <= pos[1] <= self.rect.y + self.rect.h
+                          self.rect.y <= pos[1] <= self.rect.y + self.rect.h
         if self.is_focused and clicked:
             raise ScreenChange(self.text)
 
@@ -97,8 +98,3 @@ def start_screen():
 
         pygame.display.flip()
         clock.tick(FPS)
-
-
-choice = start_screen()
-if choice == "EXIT GAME":
-    terminate()
