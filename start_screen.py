@@ -2,11 +2,10 @@ import pygame
 import sys
 import os
 
-
 pygame.init()
 with open("preferences.txt") as prefs:
     size = width, height = [int(num) for num in prefs.readline().split(", ")]
-rsz = width / 1080
+rsz = height / 1080
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 FPS = 60
@@ -34,8 +33,9 @@ def terminate():
 
 
 class Button:
-    font = pygame.font.SysFont("Trebuchet MS", 30, True)
-    padding = (rsz * 750, rsz * 100, rsz * 0, rsz * 80, rsz * 10, rsz * 100)  # x, y, shiftx, shifty, focus_expand, last
+    font = pygame.font.SysFont("Trebuchet MS", int(30 * rsz) * 2, True)
+    padding = (rsz * 1350, rsz * 100, rsz * 0, rsz * 125, rsz * 10,
+               rsz * 300)  # x, y, shiftx, shifty, focus_expand, last
 
     def __init__(self, text, pos, last=False):
         self.text = text
@@ -43,6 +43,7 @@ class Button:
         self.rect = pygame.rect.Rect([0, 0, 0, 0])
         self.is_focused = False
         self.is_last = last
+        self.color = '#CCCCCC'
 
     def update(self, pos, clicked):
         self.is_focused = self.rect.x <= pos[0] <= self.rect.x + self.rect.w and \
@@ -51,15 +52,20 @@ class Button:
             raise ScreenChange(self.text)
 
     def render(self):
-        string_rendered = Button.font.render(self.text, True, "#cccccc")
+        string_rendered = Button.font.render(self.text, True, self.color)
         self.rect = string_rendered.get_rect()
         self.rect.x = Button.padding[0] + Button.padding[2] * self.pos
-        self.rect.y = Button.padding[1] + Button.padding[3] * self.pos + self.is_last * Button.padding[5]
+        self.rect.y = Button.padding[1] + Button.padding[
+            3] * self.pos + self.is_last * Button.padding[5]
 
         if self.is_focused:
-            border_rect = [self.rect.x - Button.padding[4], self.rect.y - Button.padding[4],
-                           self.rect.w + Button.padding[4] * 2, self.rect.h + Button.padding[4] * 2]
-            pygame.draw.rect(screen, "#dddddd", border_rect, 5)
+            # border_rect = [self.rect.x - Button.padding[4], self.rect.y - Button.padding[4],
+            #                self.rect.w + Button.padding[4] * 2, self.rect.h + Button.padding[4] * 2]
+            # pygame.draw.rect(screen, "#dddddd", border_rect, 5)
+            self.color = '#AAAAAA'
+            self.rect.y += 2
+        else:
+            self.color = '#CCCCCC'
 
         screen.blit(string_rendered, self.rect)
 
@@ -74,9 +80,10 @@ def start_screen():
                  "LEADERBOARD",
                  "SETTINGS",
                  "HELP",
-                 "EXIT GAME"]
-    demo_rect = (rsz * 10, rsz * 10, width // 1.5 - rsz * 10 * 2, height - rsz * 10 * 2)
-    buttons = [Button(btn_texts[i], i, i == len(btn_texts) - 1) for i in range(len(btn_texts))]
+                 "QUIT GAME"]
+    demo_rect = (rsz * 100, rsz * 100, width // 1.5 - rsz * 100 * 2, height - rsz * 100 * 2)
+    buttons = [Button(btn_texts[i], i, i == len(btn_texts) - 1) for i in
+               range(len(btn_texts))]
     running = True
 
     while running:
@@ -86,12 +93,13 @@ def start_screen():
             elif event.type in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN):
                 try:
                     for btn in buttons:
-                        btn.update(event.pos, event.type == pygame.MOUSEBUTTONDOWN)
+                        btn.update(event.pos,
+                                   event.type == pygame.MOUSEBUTTONDOWN)
                 except ScreenChange as e:
                     return e.screen
 
         screen.fill("#111122")
-        pygame.draw.rect(screen, "#cccccc", demo_rect, 5)
+        pygame.draw.rect(screen, "#CCCCCC", demo_rect, int(5 * rsz))
 
         for btn in buttons:
             btn.render()
