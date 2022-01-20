@@ -169,7 +169,7 @@ class Border(pygame.sprite.Sprite):
         self.add(borders)
 
         self.image = pygame.Surface([abs(x2 - x1), abs(y2 - y1)])
-        self.image.fill('#333333')
+        self.image.fill('#11111A')
         self.rect = pygame.Rect(x1, y1, x2 - x1, y2 - y1)
 
     def update(self, *args):
@@ -282,9 +282,8 @@ Parts of the game
 
 def start_screen():
     b_play = Button('PLAY', (int(height / 1080 * 1280), int(height / 1080 * 120)))
-    b_leaderboard = Button('LEADERBOARD', (int(height / 1080 * 1280), int(height / 1080 * 220)))
-    b_settings = Button('SETTINGS', (int(height / 1080 * 1280), int(height / 1080 * 320)))
-    b_help = Button('HELP', (int(height / 1080 * 1280), int(height / 1080 * 420)))
+    b_settings = Button('SETTINGS', (int(height / 1080 * 1280), int(height / 1080 * 220)))
+    b_help = Button('HELP', (int(height / 1080 * 1280), int(height / 1080 * 320)))
     b_quit = Button('QUIT GAME', (int(height / 1080 * 1280), height - int(height / 1080 * 180)))
 
     running = True
@@ -315,6 +314,10 @@ def start_screen():
 
 
 def game_screen():
+    btn_back = Button('BACK', (int(height / 1080 * 60), int(height / 1080 * 60)))
+    btn_restart = Button('RESTART', (int(height / 1080 * 60), int(height / 1080 * 160)))
+    btn_help = Button('HELP', (int(height / 1080 * 60), int(height / 1080 * 260)))
+
     Border(0, 0, int(width / 16 * 3.5), height)
     Border(width - int(width / 16 * 3.5), 0, width, height)
     Border(0, -height, width, 0)
@@ -325,7 +328,7 @@ def game_screen():
 
     time = 0
     difficulty = 1.5
-    counter = 0
+    score = 0
 
     pos = (0, 0)
 
@@ -369,26 +372,39 @@ def game_screen():
         speed += a / fps
         time += 1 / fps
 
-        if time > difficulty:
+        if time > difficulty and spaceship.go:
             for i in range(int(time // difficulty)):
                 Obstacle(speed)
-            counter += int(time // difficulty)
+            score += int(time // difficulty)
             time = 0
 
         all_sprites.update(pos, clicked, speed)
         all_sprites.draw(screen)
+
+        screen.blit(update_fps(), (width - 40, 10))
+
+        font = pygame.font.SysFont("Trebuchet MS", int(30 * height / 1080), True)
+        score_text = font.render('SCORE', True, '#CCCCCC')
+        screen.blit(score_text, ((width - height) // 2 + height + height / 1080 * 180, height / 1080 * 60))
+
+        font = pygame.font.SysFont("Trebuchet MS", int(120 * height / 1080), True)
+        score_text = font.render(str(score) if len(str(score)) >= 2 else ' ' + str(score), True, '#CCCCCC')
+        screen.blit(score_text, ((width - height) // 2 + height + height / 1080 * 150, height / 1080 * 120))
+
         if spaceship.go == False:
             if not flag:
                 Button('BACK', (int(height / 1080 * 720), int(height / 1080 * 510)))
                 Button('RESTART', (int(height / 1080 * 960), int(height / 1080 * 510)))
+                flag = True
+            btn_back.kill()
+            btn_restart.kill()
+            btn_help.kill()
             screen.blit(screen2, screen2.get_rect())
 
         try:
             btns.update(pos, clicked)
         except ScreenChange as e:
             return e.screen
-
-        # screen.blit(update_fps(), (width - 40, 10))
 
         pygame.display.flip()
         clock.tick(fps)
