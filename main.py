@@ -301,13 +301,62 @@ def start_screen():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 clicked = True
 
-        screen.fill("#111122")
+        screen.fill("#11111A")
         try:
             all_sprites.update(pos, clicked)
             btns.update(pos, clicked)
         except ScreenChange as e:
             return e.screen
         pygame.draw.rect(screen, "#CCCCCC", (int(height / 1080 * 120), int(height / 1080 * 120), int(height / 1080 * 1080), height - 2 * int(height / 1080 * 120)), 5)
+
+        pygame.display.flip()
+        clock.tick(fps)
+
+
+def help_screen():
+    b_back = Button('BACK', (int(height / 1080 * 120), int(height / 1080 * 60)))
+
+    running = True
+
+    pos = (0, 0)
+
+    text_y = 180
+    font = pygame.font.SysFont("Trebuchet MS", int(30 * height / 1080), True, True)
+    text1 = font.render('This game is about a spaceship lost in space.', True, '#CCCCCC')
+    text2 = font.render('The only goal is to stay alive.', True, '#CCCCCC')
+    text3 = font.render('To turn around yourself use A / Left and D / Right. To go forwards and backwards use W / Up and S / Down.', True, '#CCCCCC')
+    text4 = font.render('To play press PLAY. If you loose, press BACK to go back to the main menu or RESTART to restart.', True, '#CCCCCC')
+    text5 = font.render('To change settings press SETTINGS. To quit the game press QUIT GAME.', True, '#CCCCCC')
+
+    created_by = font.render('Created by: SKLYAR NIKITA & SHELIPOVA VALERIA & TOKAREV FEDOR', True, '#CCCCCC')
+
+    while running:
+        clicked = False
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEMOTION:
+                pos = event.pos
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                clicked = True
+
+        screen.fill("#111122")
+        try:
+            all_sprites.update(pos, clicked)
+            btns.update(pos, clicked)
+        except ScreenChange as e:
+            return e.screen
+
+        pygame.draw.rect(screen, '#CCCCCC', (height / 1080 * 120, height / 1080 * 140, height / 1080 * 240, height / 1080 * 6), 0)
+        pygame.draw.rect(screen, '#CCCCCC', (height / 1080 * 120, height / 1080 * 940, height / 1080 * 240, height / 1080 * 6), 0)
+
+        screen.blit(text1, (height / 1080 * 120, height / 1080 * text_y))
+        screen.blit(text2, (height / 1080 * 120, height / 1080 * text_y + 50))
+        screen.blit(text3, (height / 1080 * 120, height / 1080 * text_y + 150))
+        screen.blit(text4, (height / 1080 * 120, height / 1080 * text_y + 250))
+        screen.blit(text5, (height / 1080 * 120, height / 1080 * text_y + 300))
+        screen.blit(created_by, (height / 1080 * 120, height / 1080 * 960))
 
         pygame.display.flip()
         clock.tick(fps)
@@ -339,6 +388,9 @@ def game_screen():
     screen2 = pygame.Surface((width, height))
     screen2.set_alpha(120)
     screen2.fill((0, 0, 0))
+
+    font = pygame.font.SysFont("Trebuchet MS", int(30 * height / 1080), True)
+    score_text = font.render('SCORE', True, '#CCCCCC')
 
     running = True
 
@@ -383,13 +435,11 @@ def game_screen():
 
         screen.blit(update_fps(), (width - 40, 10))
 
-        font = pygame.font.SysFont("Trebuchet MS", int(30 * height / 1080), True)
-        score_text = font.render('SCORE', True, '#CCCCCC')
         screen.blit(score_text, ((width - height) // 2 + height + height / 1080 * 180, height / 1080 * 60))
 
         font = pygame.font.SysFont("Trebuchet MS", int(120 * height / 1080), True)
-        score_text = font.render(str(score) if len(str(score)) >= 2 else ' ' + str(score), True, '#CCCCCC')
-        screen.blit(score_text, ((width - height) // 2 + height + height / 1080 * 150, height / 1080 * 120))
+        score_text_score = font.render(str(score) if len(str(score)) >= 2 else ' ' + str(score), True, '#CCCCCC')
+        screen.blit(score_text_score, ((width - height) // 2 + height + height / 1080 * 150, height / 1080 * 120))
 
         if spaceship.go == False:
             if not flag:
@@ -404,6 +454,7 @@ def game_screen():
         try:
             btns.update(pos, clicked)
         except ScreenChange as e:
+            delete_temp()
             return e.screen
 
         pygame.display.flip()
@@ -448,3 +499,5 @@ if __name__ == "__main__":
             main_bg_rect.y = 0
 
             where_to_go = game_screen()
+        elif where_to_go == 'HELP':
+            where_to_go = help_screen()
