@@ -10,9 +10,6 @@ from PIL import Image
 import random
 import math
 
-import start_screen
-
-
 '''
 CONSTANTS
 '''
@@ -32,7 +29,7 @@ def load_image(name):
     if not os.path.isfile(fullname):
         print(f"Файл с изображением '{fullname}' не найден")
         sys.exit()
-    image = pygame.image.load(fullname)
+    image = pygame.image.load(fullname).convert_alpha()
     return image
 
 
@@ -71,18 +68,51 @@ def scale_image(name, size=1.0):
     img.close()
 
 
-# FPS counter
+'''
+FPS counter
+'''
 
 
 def update_fps():
-    fps = str(1000 // tick)
+    fpss = str(int(clock.get_fps()))
     font = pygame.font.SysFont("Verdana", 18)
-    fps_text = font.render(fps, 1, pygame.Color("green"))
+    fps_text = font.render(fpss, True, pygame.Color("green"))
     return fps_text
 
 
+'''
+Loading preferences
+'''
+
+
+def load_prefs():
+    global size
+    global fps
+    global width
+    global height
+    with open("preferences.txt") as prefs:
+        size = width, height = tuple(int(num) for num in
+                                prefs.readline().split(", "))
+        fps = int(prefs.readline())
+
+
+'''
+Terminate
+'''
+
+
+def terminate():
+    pygame.quit()
+    sys.exit()
+
+
+'''
+Classes for game
+'''
+
+
 class Obstacle(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    def __init__(self, speed):
         super().__init__(all_sprites)
         self.add(obstacles)
 
@@ -101,11 +131,11 @@ class Obstacle(pygame.sprite.Sprite):
 
         self.rect.x = random.randint(
             int(width / 16 * 3.5), width - int(width / 16 * 3.5) - self.width)
-        self.rect.y = y
+        self.rect.y = -height // 4
 
         self.x = self.rect.x
-        self.y = y
-        self.speed = height / 10
+        self.y = self.rect.y
+        self.speed = speed
 
         self.w = 2
         self.angle = 0
@@ -113,9 +143,10 @@ class Obstacle(pygame.sprite.Sprite):
         self.d = 0
 
     def update(self, *args):
+        self.speed = args[2]
         self.angle += self.w * spaceship.go
 
-        self.y += self.speed * tick / 1000 * spaceship.go
+        self.y += self.speed / fps * spaceship.go
         self.rect.y = int(self.y)
 
         self.image = pygame.transform.rotate(self.sprite_img, self.angle)
@@ -126,6 +157,10 @@ class Obstacle(pygame.sprite.Sprite):
 
         if pygame.sprite.collide_mask(self, spaceship):
             spaceship.go = False
+        if self.rect.y > height:
+            self.kill()
+
+        return 1
 
 
 class Border(pygame.sprite.Sprite):
@@ -172,8 +207,8 @@ class Spaceship(pygame.sprite.Sprite):
         self.angle += self.w / 50 * self.go
         angle_rad = self.angle / 360 * 2 * pi * self.go
 
-        self.v = [self.v[0] - self.a * tick / 1000 * math.sin(angle_rad),
-                  self.v[1] - self.a * tick / 1000 * math.cos(angle_rad)]
+        self.v = [self.v[0] - self.a / fps * math.sin(angle_rad),
+                  self.v[1] - self.a / fps * math.cos(angle_rad)]
         self.x += self.v[0] * self.go
         self.y += self.v[1] * self.go
 
@@ -183,17 +218,17 @@ class Spaceship(pygame.sprite.Sprite):
         self.rect.x = int(self.x) - self.d
         self.rect.y = int(self.y) - self.d
 
-    def changes(self, type):
-        if type == pygame.KEYDOWN and self.go:
+    def changes(self, event):
+        if event.type == pygame.KEYDOWN and self.go:
             if event.key in [pygame.K_LEFT, pygame.K_a]:
-                self.aw = 1 * tick / 1000 * 150 / (2 * pi) * 360
+                self.aw = 1 / fps * 150 / (2 * pi) * 360
             elif event.key in [pygame.K_RIGHT, pygame.K_d]:
-                self.aw = -1 * tick / 1000 * 150 / (2 * pi) * 360
+                self.aw = -1 / fps * 150 / (2 * pi) * 360
             elif event.key in [pygame.K_DOWN, pygame.K_s]:
-                self.a = -height * tick / 1000 / 3
+                self.a = -height / fps / 3
             elif event.key in [pygame.K_UP, pygame.K_w]:
-                self.a = height * tick / 1000 / 3
-        if type == pygame.KEYUP and self.go:
+                self.a = height / fps / 3
+        if event.type == pygame.KEYUP and self.go:
             if event.key in [pygame.K_LEFT, pygame.K_RIGHT,
                              pygame.K_a, pygame.K_d]:
                 self.aw = 0
@@ -202,58 +237,198 @@ class Spaceship(pygame.sprite.Sprite):
                 self.a = 0
 
 
-if __name__ == "__main__":
-    pygame.init()
-    pygame.display.set_caption('not enough SPACE')
-    size = pygame.display.get_desktop_sizes()[0]
-    # size = width, height = size[0] // 2, size[1] // 2
-    with open("preferences.txt") as prefs:
-        size = width, height = [int(num) for num in prefs.readline().split(", ")]
-    flags = DOUBLEBUF
-    screen = pygame.display.set_mode(size, flags)
-    screen.set_alpha(None)
+'''
+Classes for menu
+'''
 
-    ''
-    start_screen.width = width
-    start_screen.height = height
-    start_screen.rsz = height / 1080
-    where_to_go = start_screen.start_screen()
 
-    all_sprites = pygame.sprite.Group()
+class Button(pygame.sprite.Sprite):
+    def __init__(self, text, pos):
+        super().__init__(btns)
+        self.font = pygame.font.SysFont("Trebuchet MS", int(60 * height / 1080), True)
+        self.color = '#CCCCCC'
+        self.text = text
+        self.pos = self.x, self.y = pos
+        self.string_rendered = self.font.render(self.text, True, self.color)
+        self.rect = self.string_rendered.get_rect()
+        self.rect.x = self.x
+        self.rect.y = self.y
+        self.is_focused = False
 
-    borders = pygame.sprite.Group()
+    def update(self, *args):
+        self.rect.y = self.y
+        pos, clicked = args[0], args[1]
+        self.is_focused = self.rect.x <= pos[0] <= self.rect.x + self.rect.w and self.rect.y <= pos[1] <= self.rect.y + self.rect.h
+        if self.is_focused:
+            self.color = '#AAAAAA'
+            self.rect.y += 2
+        else:
+            self.color = '#CCCCCC'
+        if self.is_focused and clicked:
+            raise ScreenChange(self.text)
+        self.string_rendered = self.font.render(self.text, True, self.color)
+        screen.blit(self.string_rendered, self.rect)
+
+
+class ScreenChange(Exception):
+    def __init__(self, screen):
+        self.screen = screen
+
+
+'''
+Parts of the game
+'''
+
+
+def start_screen():
+    b_play = Button('PLAY', (int(height / 1080 * 1280), int(height / 1080 * 120)))
+    b_leaderboard = Button('LEADERBOARD', (int(height / 1080 * 1280), int(height / 1080 * 220)))
+    b_settings = Button('SETTINGS', (int(height / 1080 * 1280), int(height / 1080 * 320)))
+    b_help = Button('HELP', (int(height / 1080 * 1280), int(height / 1080 * 420)))
+    b_quit = Button('QUIT GAME', (int(height / 1080 * 1280), height - int(height / 1080 * 180)))
+
+    running = True
+
+    pos = (0, 0)
+
+    while running:
+        clicked = False
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEMOTION:
+                pos = event.pos
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                clicked = True
+
+        screen.fill("#111122")
+        try:
+            all_sprites.update(pos, clicked)
+            btns.update(pos, clicked)
+        except ScreenChange as e:
+            return e.screen
+        pygame.draw.rect(screen, "#CCCCCC", (int(height / 1080 * 120), int(height / 1080 * 120), int(height / 1080 * 1080), height - 2 * int(height / 1080 * 120)), 5)
+
+        pygame.display.flip()
+        clock.tick(fps)
+
+
+def game_screen():
     Border(0, 0, int(width / 16 * 3.5), height)
     Border(width - int(width / 16 * 3.5), 0, width, height)
     Border(0, -height, width, 0)
     Border(0, height, width, 2 * height)
 
-    spaceship = Spaceship()
+    a = height / fps / 3
+    speed = height / 10
 
-    obstacles = pygame.sprite.Group()
-    Obstacle(0, 0)
+    time = 0
+    difficulty = 1.5
+    counter = 0
 
-    ''
+    pos = (0, 0)
+
+    bg_y = 0
+
+    flag = False
+
+    screen2 = pygame.Surface((width, height))
+    screen2.set_alpha(120)
+    screen2.fill((0, 0, 0))
 
     running = True
-    clock = pygame.time.Clock()
-    fps = 60
 
     while running:
-        tick = clock.tick(fps)
+        clicked = False
+
         screen.fill('#111122')
+
+        bg_y += height / 10 / fps
+
+        if bg_y > height:
+            bg_y = 0
+
+        main_bg_rect.y = int(bg_y)
+        screen.blit(main_bg, main_bg_rect)
+
+        main_bg_rect.y = int(bg_y) - height
+        screen.blit(main_bg, main_bg_rect)
 
         events = pygame.event.get()
         for event in events:
             if event.type == pygame.QUIT:
-                running = False
-            spaceship.changes(event.type)
+                delete_temp()
+                terminate()
+            elif event.type == pygame.MOUSEMOTION:
+                pos = event.pos
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                clicked = True
+            spaceship.changes(event)
 
+        speed += a / fps
+        time += 1 / fps
+
+        if time > difficulty:
+            for i in range(int(time // difficulty)):
+                Obstacle(speed)
+            counter += int(time // difficulty)
+            time = 0
+
+        all_sprites.update(pos, clicked, speed)
         all_sprites.draw(screen)
-        all_sprites.update()
-        screen.blit(update_fps(), (width - 40, 10))
+        if spaceship.go == False:
+            if not flag:
+                Button('BACK', (int(height / 1080 * 720), int(height / 1080 * 510)))
+                Button('RESTART', (int(height / 1080 * 960), int(height / 1080 * 510)))
+            screen.blit(screen2, screen2.get_rect())
+
+        try:
+            btns.update(pos, clicked)
+        except ScreenChange as e:
+            return e.screen
+
+        # screen.blit(update_fps(), (width - 40, 10))
 
         pygame.display.flip()
+        clock.tick(fps)
 
-    pygame.quit()
+    delete_temp()
 
-delete_temp()
+
+if __name__ == "__main__":
+    pygame.init()
+    pygame.display.set_caption('not enough SPACE')
+    load_prefs()
+    flags = DOUBLEBUF
+    screen = pygame.display.set_mode(size, flags)
+    screen.set_alpha(None)
+
+    ''
+
+    where_to_go = 'START'
+
+    while where_to_go != 'QUIT GAME':
+        load_prefs()
+        flags = DOUBLEBUF
+        screen = pygame.display.set_mode(size, flags)
+        screen.set_alpha(None)
+
+        clock = pygame.time.Clock()
+        all_sprites = pygame.sprite.Group()
+        btns = pygame.sprite.Group()
+
+        if where_to_go == 'START' or where_to_go == 'BACK':
+            where_to_go = start_screen()
+        elif where_to_go == 'PLAY' or where_to_go == 'RESTART':
+            borders = pygame.sprite.Group()
+            obstacles = pygame.sprite.Group()
+            spaceship = Spaceship()
+
+            scale_image("main_bg.png", size=height / 1080)
+            main_bg = load_image(os.path.join("temp", "main_bg.png"))
+            main_bg_rect = main_bg.get_rect()
+            main_bg_rect.x = (width - height) // 2
+            main_bg_rect.y = 0
+
+            where_to_go = game_screen()
