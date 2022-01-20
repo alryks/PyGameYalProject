@@ -402,6 +402,14 @@ def start_screen():
             return e.screen
         pygame.draw.rect(screen, "#CCCCCC", (int(height / 1080 * 120), int(height / 1080 * 120), int(height / 1080 * 1080), height - 2 * int(height / 1080 * 120)), 5)
 
+        font = pygame.font.SysFont("Trebuchet MS", int(60 * height / 1080), True, True)
+        highest = font.render('NOT ENOUGH', True, '#CCCCCC')
+        screen.blit(highest, (height / 1080 * 360, height / 1080 * 360))
+
+        font = pygame.font.SysFont("Trebuchet MS", int(120 * height / 1080),True, True)
+        highest = font.render('SPACE', True, '#CCCCCC')
+        screen.blit(highest, (height / 1080 * 480, height / 1080 * 460))
+
         pygame.display.flip()
         clock.tick(fps)
 
