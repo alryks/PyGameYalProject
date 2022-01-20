@@ -81,7 +81,7 @@ def update_fps():
 
 
 '''
-Loading preferences
+Preferences
 '''
 
 
@@ -92,9 +92,17 @@ def load_prefs():
     global height
     with open("preferences.txt") as prefs:
         size = width, height = tuple(int(num) for num in
-                                prefs.readline().split(", "))
+                                prefs.readline().split("x"))
         fps = int(prefs.readline())
 
+
+def change_prefs(text):
+    global size
+    global fps
+    global width
+    global height
+    with open("preferences.txt", "w") as prefs:
+        prefs.write(text + '\n' + str(fps))
 
 '''
 Terminate
@@ -270,6 +278,49 @@ class Button(pygame.sprite.Sprite):
         screen.blit(self.string_rendered, self.rect)
 
 
+class Choose(pygame.sprite.Sprite):
+    def __init__(self, text, pos, i):
+        super().__init__(choose)
+        self.font = pygame.font.SysFont("Trebuchet MS", int(60 * height / 1080), True)
+        self.color = '#CCCCCC'
+        self.text = text
+        self.pos = self.x, self.y = pos
+        self.i = i
+        self.string_rendered = self.font.render(self.text, True, self.color)
+        self.rect = self.string_rendered.get_rect()
+        self.rect.x = self.x
+        self.rect.y = self.y
+        self.is_focused = False
+
+    def update(self, *args):
+        self.rect.y = self.y
+        pos, clicked = args[0], args[1]
+        self.is_focused = self.rect.x - int(60 * height / 1080) <= pos[0] <= self.rect.x + self.rect.w and self.rect.y <= pos[1] <= self.rect.y + self.rect.h
+        if self.is_focused and clicked:
+            pygame.draw.circle(screen, self.color, (self.rect.x - int(30 * height / 1080), self.rect.y + self.rect.h // 2), int(10 * height / 1080))
+            if self.i < 3:
+                chooses[0] = 0
+                chooses[1] = 0
+                chooses[2] = 0
+            else:
+                chooses[3] = 0
+                chooses[4] = 0
+            chooses[self.i] = 1
+            if self.text == 'FULLSCREEN':
+                flags = DOUBLEBUF | FULLSCREEN
+                change_prefs('x'.join(list(map(str, list(pygame.display.get_desktop_sizes()[0])))))
+            else:
+                flags = DOUBLEBUF
+                change_prefs(self.text)
+            load_prefs()
+            pygame.display.set_mode(size, flags)
+        if chooses[self.i]:
+            pygame.draw.circle(screen, self.color, (self.rect.x - int(30 * height / 1080), self.rect.y + self.rect.h // 2), int(10 * height / 1080))
+        self.string_rendered = self.font.render(self.text, True, self.color)
+        screen.blit(self.string_rendered, self.rect)
+        pygame.draw.circle(screen, self.color, (self.rect.x - int(30 * height / 1080), self.rect.y + self.rect.h // 2), int(15 * height / 1080), int(3 * height / 1080))
+
+
 class ScreenChange(Exception):
     def __init__(self, screen):
         self.screen = screen
@@ -352,11 +403,72 @@ def help_screen():
         pygame.draw.rect(screen, '#CCCCCC', (height / 1080 * 120, height / 1080 * 940, height / 1080 * 240, height / 1080 * 6), 0)
 
         screen.blit(text1, (height / 1080 * 120, height / 1080 * text_y))
-        screen.blit(text2, (height / 1080 * 120, height / 1080 * text_y + 50))
-        screen.blit(text3, (height / 1080 * 120, height / 1080 * text_y + 150))
-        screen.blit(text4, (height / 1080 * 120, height / 1080 * text_y + 250))
-        screen.blit(text5, (height / 1080 * 120, height / 1080 * text_y + 300))
+        screen.blit(text2, (height / 1080 * 120, height / 1080 * (text_y + 50)))
+        screen.blit(text3, (height / 1080 * 120, height / 1080 * (text_y + 150)))
+        screen.blit(text4, (height / 1080 * 120, height / 1080 * (text_y + 250)))
+        screen.blit(text5, (height / 1080 * 120, height / 1080 * (text_y + 300)))
         screen.blit(created_by, (height / 1080 * 120, height / 1080 * 960))
+
+        pygame.display.flip()
+        clock.tick(fps)
+
+
+def settings_screen():
+    b_back = Button('BACK', (int(height / 1080 * 120), int(height / 1080 * 60)))
+
+    choose_fullscreen = Choose('FULLSCREEN', (int(height / 1080 * 165), int(height / 1080 * 280)), 0)
+    choose_fullhd = Choose('1920x1080', (int(height / 1080 * 665), int(height / 1080 * 280)), 1)
+    choose_hd = Choose('1280x720', (int(height / 1080 * 1165), int(height / 1080 * 280)), 2)
+
+    running = True
+
+    pos = (0, 0)
+
+    text_y = 200
+    # text2 = font.render('Show FPS?', True, '#CCCCCC')
+
+    while running:
+        font = pygame.font.SysFont("Trebuchet MS", int(30 * height / 1080), True, True)
+        text1 = font.render('Choose resolution', True, '#CCCCCC')
+        clicked = False
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                change_prefs('1280x720')
+                terminate()
+            elif event.type == pygame.MOUSEMOTION:
+                pos = event.pos
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                clicked = True
+
+        screen.fill("#111122")
+        try:
+            all_sprites.update(pos, clicked)
+            btns.update(pos, clicked)
+        except ScreenChange as e:
+            return e.screen
+
+        choose.update(pos, clicked)
+
+        b_back.kill()
+        choose_fullscreen.kill()
+        choose_fullhd.kill()
+        choose_hd.kill()
+
+        b_back = Button('BACK',
+                        (int(height / 1080 * 120), int(height / 1080 * 60)))
+
+        choose_fullscreen = Choose('FULLSCREEN', (
+        int(height / 1080 * 165), int(height / 1080 * 280)), 0)
+        choose_fullhd = Choose('1920x1080', (
+        int(height / 1080 * 665), int(height / 1080 * 280)), 1)
+        choose_hd = Choose('1280x720', (
+        int(height / 1080 * 1165), int(height / 1080 * 280)), 2)
+
+        pygame.draw.rect(screen, '#CCCCCC', (height / 1080 * 120, height / 1080 * 140, height / 1080 * 240, height / 1080 * 6), 0)
+
+        screen.blit(text1, (height / 1080 * 120, height / 1080 * text_y))
+        # screen.blit(text2, (height / 1080 * 120, height / 1080 * (text_y + 250)))
 
         pygame.display.flip()
         clock.tick(fps)
@@ -474,6 +586,7 @@ if __name__ == "__main__":
     ''
 
     where_to_go = 'START'
+    chooses = [0, 0, 1, 1, 0]
 
     while where_to_go != 'QUIT GAME':
         load_prefs()
@@ -484,6 +597,7 @@ if __name__ == "__main__":
         clock = pygame.time.Clock()
         all_sprites = pygame.sprite.Group()
         btns = pygame.sprite.Group()
+        choose = pygame.sprite.Group()
 
         if where_to_go == 'START' or where_to_go == 'BACK':
             where_to_go = start_screen()
@@ -501,3 +615,5 @@ if __name__ == "__main__":
             where_to_go = game_screen()
         elif where_to_go == 'HELP':
             where_to_go = help_screen()
+        elif where_to_go == 'SETTINGS':
+            where_to_go = settings_screen()
