@@ -10,6 +10,8 @@ from PIL import Image
 import random
 import math
 
+import sqlite3
+
 '''
 CONSTANTS
 '''
@@ -69,6 +71,38 @@ def scale_image(name, size=1.0):
 
 
 '''
+DB
+'''
+
+
+def db_get():
+    con = sqlite3.connect('db.db')
+    cur = con.cursor()
+    res = cur.execute('SELECT score FROM score').fetchall()[0][0]
+    con.close()
+    return res
+
+
+def db_post(n):
+    if os.path.exists('db.db'):
+        if n > db_get():
+            con = sqlite3.connect('db.db')
+            cur = con.cursor()
+            cur.execute(f'UPDATE score SET score = {n}')
+            con.commit()
+            con.close()
+    else:
+        f = open('db.db', 'w')
+        f.close()
+        con = sqlite3.connect('db.db')
+        cur = con.cursor()
+        cur.execute('CREATE TABLE score (score INTEGER);')
+        cur.execute(f'INSERT INTO score (score) VALUES({n})')
+        con.commit()
+        con.close()
+
+
+'''
 FPS counter
 '''
 
@@ -103,6 +137,7 @@ def change_prefs(text):
     global height
     with open("preferences.txt", "w") as prefs:
         prefs.write(text + '\n' + str(fps))
+
 
 '''
 Terminate
@@ -332,6 +367,13 @@ Parts of the game
 
 
 def start_screen():
+    if chooses[0] == 1:
+        flags = DOUBLEBUF | FULLSCREEN
+        change_prefs('x'.join(
+            list(map(str, list(pygame.display.get_desktop_sizes()[0])))))
+        load_prefs()
+        pygame.display.set_mode(size, flags)
+
     b_play = Button('PLAY', (int(height / 1080 * 1280), int(height / 1080 * 120)))
     b_settings = Button('SETTINGS', (int(height / 1080 * 1280), int(height / 1080 * 220)))
     b_help = Button('HELP', (int(height / 1080 * 1280), int(height / 1080 * 320)))
@@ -365,6 +407,13 @@ def start_screen():
 
 
 def help_screen():
+    if chooses[0] == 1:
+        flags = DOUBLEBUF | FULLSCREEN
+        change_prefs('x'.join(
+            list(map(str, list(pygame.display.get_desktop_sizes()[0])))))
+        load_prefs()
+        pygame.display.set_mode(size, flags)
+
     b_back = Button('BACK', (int(height / 1080 * 120), int(height / 1080 * 60)))
 
     running = True
@@ -376,7 +425,7 @@ def help_screen():
     text1 = font.render('This game is about a spaceship lost in space.', True, '#CCCCCC')
     text2 = font.render('The only goal is to stay alive.', True, '#CCCCCC')
     text3 = font.render('To turn around yourself use A / Left and D / Right. To go forwards and backwards use W / Up and S / Down.', True, '#CCCCCC')
-    text4 = font.render('To play press PLAY. If you loose, press BACK to go back to the main menu or RESTART to restart.', True, '#CCCCCC')
+    text4 = font.render('To play press PLAY. If you lose, press BACK to go back to the main menu or RESTART to restart.', True, '#CCCCCC')
     text5 = font.render('To change settings press SETTINGS. To quit the game press QUIT GAME.', True, '#CCCCCC')
 
     created_by = font.render('Created by: SKLYAR NIKITA & SHELIPOVA VALERIA & TOKAREV FEDOR', True, '#CCCCCC')
@@ -475,6 +524,14 @@ def settings_screen():
 
 
 def game_screen():
+    if chooses[0] == 1:
+        flags = DOUBLEBUF | FULLSCREEN
+        change_prefs('x'.join(
+            list(map(str, list(pygame.display.get_desktop_sizes()[0])))))
+        load_prefs()
+        pygame.display.set_mode(size, flags)
+
+    db_post(0)
     btn_back = Button('BACK', (int(height / 1080 * 60), int(height / 1080 * 60)))
     btn_restart = Button('RESTART', (int(height / 1080 * 60), int(height / 1080 * 160)))
     btn_help = Button('HELP', (int(height / 1080 * 60), int(height / 1080 * 260)))
@@ -525,6 +582,7 @@ def game_screen():
         events = pygame.event.get()
         for event in events:
             if event.type == pygame.QUIT:
+                db_post(score)
                 delete_temp()
                 terminate()
             elif event.type == pygame.MOUSEMOTION:
@@ -553,6 +611,14 @@ def game_screen():
         score_text_score = font.render(str(score) if len(str(score)) >= 2 else ' ' + str(score), True, '#CCCCCC')
         screen.blit(score_text_score, ((width - height) // 2 + height + height / 1080 * 150, height / 1080 * 120))
 
+        font = pygame.font.SysFont("Trebuchet MS", int(30 * height / 1080), True)
+        highest = font.render('HIGHEST SCORE', True, '#CCCCCC')
+        screen.blit(highest, ((width - height) // 2 + height + height / 1080 * 120, height / 1080 * 360))
+
+        font = pygame.font.SysFont("Trebuchet MS", int(120 * height / 1080), True)
+        highest_score = font.render(str(db_get()) if len(str(db_get())) >= 2 else ' ' + str(db_get()), True, '#CCCCCC')
+        screen.blit(highest_score, ((width - height) // 2 + height + height / 1080 * 150, height / 1080 * 400))
+
         if spaceship.go == False:
             if not flag:
                 Button('BACK', (int(height / 1080 * 720), int(height / 1080 * 510)))
@@ -566,6 +632,7 @@ def game_screen():
         try:
             btns.update(pos, clicked)
         except ScreenChange as e:
+            db_post(score)
             delete_temp()
             return e.screen
 
@@ -590,7 +657,6 @@ if __name__ == "__main__":
 
     while where_to_go != 'QUIT GAME':
         load_prefs()
-        flags = DOUBLEBUF
         screen = pygame.display.set_mode(size, flags)
         screen.set_alpha(None)
 
